@@ -1,0 +1,47 @@
+schemaVersion: "2"
+kind: mixin
+name: firecrawl
+displayName: Firecrawl (live web access)
+description: "Adds live web search/scrape/crawl to any agent via the firecrawl-py SDK, wired to Firecrawl's cloud API. Needs a key: sbx secret set -g firecrawl (the kit holds no key)."
+
+permissions:
+  network:
+    allow:
+      - pypi.org
+      - files.pythonhosted.org
+      - api.firecrawl.dev
+
+credentials:
+  - service: firecrawl
+    apiKey:
+      name: FIRECRAWL_API_KEY
+      inject:
+        - domain: api.firecrawl.dev
+          header: Authorization
+          format: "Bearer %s"
+
+environment:
+  variables:
+    FIRECRAWL_API_KEY: "proxy-managed"
+
+setup:
+  install:
+    - command: "pip install --break-system-packages 'firecrawl-py==4.30.1'"
+      user: "1000"
+      description: "Install the Firecrawl Python SDK"
+
+agentInstructions:
+  content: |
+    Firecrawl live web access: the firecrawl-py SDK is installed and the
+    FIRECRAWL_API_KEY credential is injected by the sbx proxy on requests to
+    api.firecrawl.dev. Use it for current, LLM-ready web data:
+
+        from firecrawl import Firecrawl
+        fc = Firecrawl()                                 # key handled by the sbx proxy
+
+        fc.scrape("https://example.com", formats=["markdown"])   # one page -> clean markdown
+        fc.search("docker sandboxes mixin kit", limit=5)         # search the web, get page content
+        fc.crawl("https://docs.example.com", limit=20)           # crawl a whole site/section
+
+    Reach for this whenever a task needs facts beyond your knowledge cutoff, the
+    contents of a specific URL, or a sweep across a documentation site.
