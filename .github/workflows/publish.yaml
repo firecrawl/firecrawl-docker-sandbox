@@ -10,6 +10,7 @@ on:
       - spec.yaml
       - README.md
       - LICENSE
+      - NOTICE
       - scripts/**
       - .github/workflows/publish.yaml
   workflow_dispatch:
