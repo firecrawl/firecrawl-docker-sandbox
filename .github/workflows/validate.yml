@@ -1,0 +1,40 @@
+name: Validate kit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  kitcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: tools/kitcheck/go.mod
+          cache-dependency-path: tools/kitcheck/go.sum
+
+      # Loads spec.yaml through the authoritative docker/sbx-kits-contrib
+      # validator, then applies the engine-level and repo-consistency checks
+      # that validator leaves to the runtime. The publish workflow runs the real
+      # `sbx kit validate` right before pushing; this is the gate on every PR.
+      - name: Validate the kit
+        working-directory: tools/kitcheck
+        run: go run . ../..
+
+      - name: Vet and format the checker
+        working-directory: tools/kitcheck
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -d .; exit 1; }
+          go vet ./...
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: shellcheck scripts/*.sh

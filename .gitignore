@@ -6,3 +6,6 @@
 **/*.py[cod]
 *.tar
 *.zip
+*.bak
+spec.yaml.bak
+/tmp/
