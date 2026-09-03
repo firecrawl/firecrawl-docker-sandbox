@@ -56,20 +56,20 @@ declares _what_ it needs and _where to inject it_; you control _where the key co
 Layer the mixin onto an agent. From the published image:
 
 ```console
-sbx run --kit docker.io/ajeetraina777/sbx-kits-firecrawl:latest claude
+sbx run --kit docker.io/firecrawl/firecrawl-docker-sandbox:latest claude
 ```
 
 Or straight from this repo over git:
 
 ```console
-sbx run --kit "git+https://github.com/ajeetraina/sbx-kits-firecrawl.git" claude
+sbx run --kit "git+https://github.com/firecrawl/firecrawl-docker-sandbox.git" claude
 ```
 
 Or from a local clone (the kit lives at the repo root):
 
 ```console
-git clone https://github.com/ajeetraina/sbx-kits-firecrawl.git
-sbx run --kit ./sbx-kits-firecrawl/ claude
+git clone https://github.com/firecrawl/firecrawl-docker-sandbox.git
+sbx run --kit ./firecrawl-docker-sandbox/ claude
 ```
 
 #### Choosing the agent
@@ -84,7 +84,7 @@ claude, claude-bedrock, codex, copilot, cursor, docker-agent, droid, gemini, kir
 So you can swap `claude` for, say, `codex`:
 
 ```console
-sbx run --kit docker.io/ajeetraina777/sbx-kits-firecrawl:latest codex
+sbx run --kit docker.io/firecrawl/firecrawl-docker-sandbox:latest codex
 ```
 
 Arguments meant for the agent itself go after a `--` separator, e.g. `sbx run --kit ...:latest codex -- --help`.

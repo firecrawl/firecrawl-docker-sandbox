@@ -3,11 +3,11 @@
 #
 #   ./scripts/push-kit.sh                 # pushes :latest from the repo root spec
 #   TAG=v1 ./scripts/push-kit.sh          # pushes :v1
-#   DOCKERHUB_NAMESPACE=me ./scripts/push-kit.sh
+#   DOCKERHUB_NAMESPACE=me ./scripts/push-kit.sh   # push to a personal namespace for testing
 set -euo pipefail
 
-namespace="${DOCKERHUB_NAMESPACE:-${DOCKER_NAMESPACE:-ajeetraina777}}"
-kit_name="${KIT_NAME:-sbx-kits-firecrawl}"   # also the staged subdir name
+namespace="${DOCKERHUB_NAMESPACE:-${DOCKER_NAMESPACE:-firecrawl}}"
+kit_name="${KIT_NAME:-firecrawl-docker-sandbox}"   # also the staged subdir name
 tag="${TAG:-latest}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 image="docker.io/$namespace/$kit_name"
