@@ -1,8 +1,8 @@
 name: Publish Kit
 
-# Publish the kit to docker.io/firecrawl/firecrawl-docker-sandbox when it changes on main,
+# Publish the kit to docker.io/firecrawldev/firecrawl-docker-sandbox when it changes on main,
 # and allow manual runs. Requires DOCKERHUB_USERNAME / DOCKERHUB_TOKEN repo secrets for an
-# account with push access to the firecrawl Docker Hub namespace.
+# account with push access to the firecrawldev Docker Hub namespace.
 on:
   push:
     branches: [main]
@@ -25,7 +25,7 @@ on:
         default: "latest"
 
 env:
-  DOCKERHUB_NAMESPACE: firecrawl
+  DOCKERHUB_NAMESPACE: firecrawldev
   KIT_NAME: firecrawl-docker-sandbox
 
 jobs:

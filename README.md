@@ -67,12 +67,12 @@ sbx run --kit "git+https://github.com/firecrawl/firecrawl-docker-sandbox.git#ref
 ```
 
 From the published image. Every merge to `main` publishes
-`docker.io/firecrawl/firecrawl-docker-sandbox:latest` via [`scripts/push-kit.sh`](scripts/push-kit.sh);
+`docker.io/firecrawldev/firecrawl-docker-sandbox:latest` via [`scripts/push-kit.sh`](scripts/push-kit.sh);
 `sbx` rejects `:latest`, so resolve the tag to a digest first:
 
 ```console
-digest=$(docker buildx imagetools inspect docker.io/firecrawl/firecrawl-docker-sandbox:latest --format '{{.Manifest.Digest}}')
-sbx run --kit "oci://docker.io/firecrawl/firecrawl-docker-sandbox@$digest" claude
+digest=$(docker buildx imagetools inspect docker.io/firecrawldev/firecrawl-docker-sandbox:latest --format '{{.Manifest.Digest}}')
+sbx run --kit "oci://docker.io/firecrawldev/firecrawl-docker-sandbox@$digest" claude
 ```
 
 ### Choosing the agent

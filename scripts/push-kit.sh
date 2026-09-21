@@ -11,7 +11,7 @@
 # (installing sbx from docker/sbx-releases); a maintainer can also run it locally.
 set -euo pipefail
 
-namespace="${DOCKERHUB_NAMESPACE:-${DOCKER_NAMESPACE:-firecrawl}}"
+namespace="${DOCKERHUB_NAMESPACE:-${DOCKER_NAMESPACE:-firecrawldev}}"
 kit_name="${KIT_NAME:-firecrawl-docker-sandbox}"   # also the staged subdir name
 tag="${TAG:-latest}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
