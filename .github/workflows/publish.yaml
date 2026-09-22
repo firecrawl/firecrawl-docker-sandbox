@@ -18,7 +18,7 @@ on:
       sbx_release:
         description: "docker/sbx-releases tag to install (must support kit-spec v2)"
         required: true
-        default: "v0.39.0"
+        default: "v0.45.0"
       tag:
         description: "OCI tag to publish"
         required: false
@@ -39,7 +39,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           # On a push event `inputs` is empty, so fall back to the v2-capable default.
-          SBX_RELEASE: ${{ inputs.sbx_release || 'v0.39.0' }}
+          SBX_RELEASE: ${{ inputs.sbx_release || 'v0.45.0' }}
         run: |
           set -euo pipefail
           gh release download "$SBX_RELEASE" \
