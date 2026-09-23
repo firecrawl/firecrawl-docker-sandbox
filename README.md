@@ -12,7 +12,7 @@ site, instead of answering from training-cutoff knowledge.
 
 Four observable things, so each is independently verifiable (see [Verify the kit](#3-verify-the-kit)):
 
-1. Installs `firecrawl-py==4.41.0` as the agent user (`1000`), and fails the sandbox create if the install or
+1. Installs `firecrawl-py==4.44.0` as the agent user (`1000`), and fails the sandbox create if the install or
    the post-install import check fails.
 2. Declares a `firecrawl` credential. The key is swapped into the `Authorization` header by the sbx proxy on
    requests to `api.firecrawl.dev`, and is never baked into the image or written to the sandbox.
@@ -106,7 +106,7 @@ independent layer, from a cheap import up to a full end-to-end scrape.
 !python3 -c "import firecrawl, importlib.metadata as m; print('firecrawl-py', m.version('firecrawl-py'), '->', firecrawl.__file__)"
 ```
 
-Expect `firecrawl-py 4.41.0` (the pin from this kit's `spec.yaml`) under
+Expect `firecrawl-py 4.44.0` (the pin from this kit's `spec.yaml`) under
 `/home/agent/.local/lib/.../site-packages/`, the user-site location that matches the kit installing as user
 `1000` rather than as root.
 
@@ -149,7 +149,12 @@ fc = Firecrawl()
 fc.scrape("https://example.com", formats=["markdown"])   # one page -> clean markdown
 fc.search("docker sandboxes mixin kit", limit=5)         # search the web, get page content
 fc.crawl("https://docs.example.com", limit=20)           # crawl a site/section
+fc.search("flight prices", sources=["alexandria"])        # Alexandria (beta): discover providers/tools
+fc.scrape_alexandria({"provider": "...", "capability": "...", "options": {}})  # Alexandria: execute
 ```
+
+Alexandria calls need an API key that has been enabled for the beta; on other keys they return an
+authorization error rather than data.
 
 See the [Firecrawl Python SDK docs](https://docs.firecrawl.dev/sdks/python) for the full API (formats,
 structured JSON extraction with a schema, crawl options).

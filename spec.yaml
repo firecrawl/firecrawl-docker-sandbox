@@ -1,7 +1,7 @@
 schemaVersion: "2"
 kind: mixin
 name: firecrawl
-version: "1.0.0"
+version: "1.1.0"
 displayName: Firecrawl (live web access)
 description: "Adds live web search/scrape/crawl to any agent via the firecrawl-py SDK, wired to Firecrawl's cloud API. Needs a key: sbx secret set -g firecrawl (the kit holds no key)."
 sourceURL: https://github.com/firecrawl/firecrawl-docker-sandbox
@@ -41,7 +41,7 @@ setup:
     # PyPI's hashes, so pinning the version pins the content.
     - command: |
         set -eu
-        SDK_VERSION=4.41.0
+        SDK_VERSION=4.44.0
 
         command -v python3 >/dev/null 2>&1 || {
           echo "firecrawl kit: python3 not found. Every docker/sandbox-templates image ships python3 and python3-pip; on a custom base image, install them before layering this kit." >&2
@@ -84,6 +84,15 @@ agentInstructions:
         fc.scrape("https://example.com", formats=["markdown"])   # one page -> clean markdown
         fc.search("docker sandboxes mixin kit", limit=5)         # search the web, get page content
         fc.crawl("https://docs.example.com", limit=20)           # crawl a site/section
+
+    Alexandria (beta) reaches structured third-party data through the same
+    API host. Discover a provider or tool first, then execute it. Skip this on
+    an API key that has not been enabled for Alexandria; the call returns an
+    authorization error rather than data.
+
+        fc.search("flight prices", sources=["alexandria"])        # discover providers/tools
+        fc.find_tools(capabilities=["search"], limit=10)          # browse the catalogue
+        fc.scrape_alexandria({"provider": "<provider>", "capability": "<capability>", "options": {...}})
 
     Constraints that come from the sandbox, not from Firecrawl:
 

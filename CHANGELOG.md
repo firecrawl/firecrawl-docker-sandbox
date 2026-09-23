@@ -2,6 +2,13 @@
 
 The version here is the kit's `version:` field in `spec.yaml`; `tools/kitcheck` fails if the two disagree.
 
+## 1.1.0
+
+- Bumps `firecrawl-py` to 4.44.0, which adds Alexandria: `search(..., sources=["alexandria"])`,
+  `find_tools()` and `scrape_alexandria()`. All three call `api.firecrawl.dev`, so the network allow
+  list is unchanged. Alexandria is in beta and needs an API key enabled for it.
+- Adds an Alexandria section to `agentInstructions`.
+
 ## 1.0.0
 
 First release under `firecrawl/firecrawl-docker-sandbox`, adapted from
