@@ -1,7 +1,7 @@
 schemaVersion: "2"
 kind: mixin
 name: firecrawl
-version: "1.1.0"
+version: "1.0.0"
 displayName: Firecrawl (live web access)
 description: "Adds live web search/scrape/crawl to any agent via the firecrawl-py SDK, wired to Firecrawl's cloud API. Needs a key: sbx secret set -g firecrawl (the kit holds no key)."
 sourceURL: https://github.com/firecrawl/firecrawl-docker-sandbox
