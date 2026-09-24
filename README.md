@@ -16,10 +16,24 @@ Four observable things, so each is independently verifiable (see [Verify the kit
    the post-install import check fails.
 2. Declares a `firecrawl` credential. The key is swapped into the `Authorization` header by the sbx proxy on
    requests to `api.firecrawl.dev`, and is never baked into the image or written to the sandbox.
-3. Allows egress to `api.firecrawl.dev` (plus PyPI, at install time) via `permissions.network.allow`. Nothing
-   else on the internet is reachable.
+3. Allows egress to `api.firecrawl.dev` (plus PyPI, at install time) via `permissions.network.allow`. Kit
+   network rules add to your sandbox policy; they do not narrow it. Under Docker's default `balanced` policy,
+   general websites (including most documentation sites) return a proxy 403, so Firecrawl is the agent's
+   route to them. Under `deny-all`, `api.firecrawl.dev` is the only web host the agent can reach.
 4. Ships an `agentInstructions` note so the agent knows the capability exists, how to call it, and which
    sandbox constraints apply to it.
+
+## 0. Prerequisites
+
+- The `sbx` CLI, v0.45 or later. Docker Desktop is not required. On macOS, per
+  [Docker's install docs](https://docs.docker.com/ai/sandboxes/): `brew install docker/tap/sbx`.
+- Sign in once with `sbx login`.
+- A global network policy, set once with `sbx policy init balanced` (or `deny-all`). Until this runs, every
+  `sbx run` fails with `global network policy has not been initialized`.
+
+> Kits are experimental and in Early Access. This kit is on kit spec v2. sbx v0.45 introduced kit spec v3 and
+> keeps supporting v2 for built-in agents, but v3 workloads and mixins cannot be combined with v2 kits. A v3
+> port of this kit is planned.
 
 ## 1. Store the Firecrawl API key
 
@@ -43,8 +57,18 @@ On the **first** `sbx run` with this kit, sbx asks you to approve sending the `f
 in the secret store, accept the defaults; no env-var or file source is needed. The kit declares only *what* it
 needs and *where to inject it*, so you stay in control of *where the key comes from*.
 
-The credential is marked `required`, so a sandbox with no binding fails at create time with a clear message
-rather than 401-ing halfway through a task.
+The credential is marked `required`. In an interactive `sbx run`, that means sbx prompts for the binding. In a
+non-interactive create (`--detached`, CI) there is no prompt: sbx creates the sandbox with the credential
+withheld and prints `WARN: credential not sent: no binding authorizes this service`, and scrapes then fail
+with a 401 because the literal `proxy-managed` placeholder reaches Firecrawl. For unattended use, write the
+binding to `~/.config/sbx/credentials.yaml` first:
+
+```yaml
+bindings:
+  firecrawl:
+    apiKey:
+      domains: [api.firecrawl.dev]
+```
 
 If `sbx policy ls` shows `Governance: Managed by <org>`, one more step is needed before scrapes work; see
 [Centrally governed hosts](#centrally-governed-hosts).
@@ -68,10 +92,11 @@ sbx run --kit "git+https://github.com/firecrawl/firecrawl-docker-sandbox.git#ref
 
 From the published image. Every merge to `main` publishes
 `docker.io/firecrawl/firecrawl-docker-sandbox:latest` via [`scripts/push-kit.sh`](scripts/push-kit.sh);
-`sbx` rejects `:latest`, so resolve the tag to a digest first:
+`sbx` rejects `:latest`, so resolve the tag to a digest first. Use the plain `inspect` output: the `--format`
+path parses the kit's YAML config blob as JSON and fails:
 
 ```console
-digest=$(docker buildx imagetools inspect docker.io/firecrawl/firecrawl-docker-sandbox:latest --format '{{.Manifest.Digest}}')
+digest=$(docker buildx imagetools inspect docker.io/firecrawl/firecrawl-docker-sandbox:latest | awk '/^Digest:/ {print $2}')
 sbx run --kit "oci://docker.io/firecrawl/firecrawl-docker-sandbox@$digest" claude
 ```
 
@@ -81,7 +106,7 @@ The trailing argument (`claude` above) is the coding agent that runs inside the 
 the kit. Any supported agent works, and `sbx run --help` lists them:
 
 ```
-claude, claude-bedrock, codex, copilot, cursor, docker-agent, droid, gemini, kiro, opencode, shell
+claude, codex, copilot, cursor, devin, docker-agent, droid, gemini, kiro, opencode, shell
 ```
 
 So `claude` can be swapped for `codex`:
@@ -121,7 +146,7 @@ outbound requests to `api.firecrawl.dev`:
 
 Expect `FIRECRAWL_API_KEY=proxy-managed`. A real `fc-…` value here means the credential is coming from
 somewhere other than this kit's proxy injection. An unset variable means your sbx predates per-credential
-`proxyManaged`; upgrade Docker Desktop.
+`proxyManaged`; update the `sbx` CLI.
 
 **iii. End-to-end proof**, scraping a page through the cloud API. This transitively exercises the package, the
 credential, and egress to `api.firecrawl.dev`, so run this one if you run only one:
@@ -161,8 +186,9 @@ structured JSON extraction with a schema, crawl options).
 
 Two sandbox-imposed limits are worth knowing, because they look like Firecrawl bugs and are not:
 
-- `api.firecrawl.dev` is the only reachable host, so a URL found in a scrape result cannot be fetched with
-  `curl` or `requests`. Scrape it through Firecrawl instead.
+- The kit adds one host; it does not open the web. Under `balanced`, general websites return a proxy 403 to
+  `curl` or `requests`, so a URL found in a scrape result has to be scraped through Firecrawl too. Under
+  `deny-all`, `api.firecrawl.dev` is the only web host.
 - Screenshot and other media formats return links on Firecrawl's storage host, which is outside the allow
   list, so the file cannot be downloaded from inside the sandbox. Widen `permissions.network.allow` in a fork
   if you need them.
@@ -212,7 +238,7 @@ consistency checks that loader leaves to the runtime:
 cd tools/kitcheck && go run . ../..
 ```
 
-If you have Docker Desktop with a v2-capable `sbx`, also run the real thing and a smoke test:
+If you have the `sbx` CLI (v0.45 or later), also run the real thing and a smoke test:
 
 ```console
 sbx kit validate .

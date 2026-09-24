@@ -57,5 +57,5 @@ echo "Pushed $image:$tag (spec version $spec_version)"
 # like a failed push.
 echo
 echo "Give consumers the digest, not the tag:"
-echo "  digest=\$(docker buildx imagetools inspect $image:$tag --format '{{.Manifest.Digest}}')"
+echo "  digest=\$(docker buildx imagetools inspect $image:$tag | awk '/^Digest:/ {print \$2}')"
 echo "  sbx run --kit \"oci://$image@\$digest\" claude"
