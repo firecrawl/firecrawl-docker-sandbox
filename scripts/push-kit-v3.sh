@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and push the Kit v3 mixin (v3/firecrawl.yaml) to an OCI registry.
+# Build and push the Kit v3 mixin (firecrawl/firecrawl.yaml) to an OCI registry.
 #
 #   ./scripts/push-kit-v3.sh                          # pushes :<version> and :latest
 #   DOCKERHUB_NAMESPACE=me ./scripts/push-kit-v3.sh   # pushes to another namespace
@@ -16,7 +16,7 @@ set -euo pipefail
 namespace="${DOCKERHUB_NAMESPACE:-${DOCKER_NAMESPACE:-firecrawl}}"
 kit_name="${KIT_V3_NAME:-sbx-kit-firecrawl}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-kit_dir="$repo_root/v3"
+kit_dir="$repo_root/firecrawl"
 image="docker.io/$namespace/$kit_name"
 push="${PUSH:-1}"
 
@@ -31,7 +31,7 @@ docker buildx version >/dev/null 2>&1 || {
 
 # The tag is the descriptor's own version, so the tag says what the image is.
 version="$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([0-9][^"]*\)"\{0,1\}[[:space:]]*$/\1/p' "$kit_dir/firecrawl.yaml")"
-[ -n "$version" ] || { echo "push-kit-v3: v3/firecrawl.yaml has no version: field" >&2; exit 1; }
+[ -n "$version" ] || { echo "push-kit-v3: firecrawl/firecrawl.yaml has no version: field" >&2; exit 1; }
 
 if [ "$push" = "1" ]; then
   docker buildx build "$kit_dir" -f "$kit_dir/firecrawl.yaml" \

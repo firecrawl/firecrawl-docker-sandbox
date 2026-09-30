@@ -2,7 +2,7 @@ name: Publish Kit
 
 # Publish both forms of the kit when they change on main, and allow manual runs:
 #   kit spec v2  -> docker.io/firecrawl/firecrawl-docker-sandbox   (spec.yaml, sbx kit push)
-#   Kit v3       -> docker.io/firecrawl/sbx-kit-firecrawl          (v3/firecrawl.yaml, docker buildx)
+#   Kit v3       -> docker.io/firecrawl/sbx-kit-firecrawl          (firecrawl/firecrawl.yaml, docker buildx)
 # Requires DOCKERHUB_USERNAME / DOCKERHUB_TOKEN repo secrets for an account with push access
 # to the firecrawl Docker Hub namespace.
 on:
@@ -10,7 +10,7 @@ on:
     branches: [main]
     paths:
       - spec.yaml
-      - v3/**
+      - firecrawl/**
       - README.md
       - LICENSE
       - NOTICE
@@ -97,5 +97,5 @@ jobs:
       - name: Build and push the v3 kit
         # The kit frontend validates the descriptor during the build, so a bad
         # descriptor fails the job before anything reaches Docker Hub. The
-        # version tag is read from v3/firecrawl.yaml; :latest moves with it.
+        # version tag is read from firecrawl/firecrawl.yaml; :latest moves with it.
         run: bash ./scripts/push-kit-v3.sh

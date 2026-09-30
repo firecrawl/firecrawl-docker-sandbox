@@ -63,5 +63,5 @@ jobs:
 
       - name: Run the kit conformance suite
         run: |
-          version="$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([0-9][^"]*\)"\{0,1\}[[:space:]]*$/\1/p' v3/firecrawl.yaml)"
+          version="$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([0-9][^"]*\)"\{0,1\}[[:space:]]*$/\1/p' firecrawl/firecrawl.yaml)"
           "$RUNNER_TEMP/kit-tck" validate --layout "$RUNNER_TEMP/kit-layout" "$version" -v

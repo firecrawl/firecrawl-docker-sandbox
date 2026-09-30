@@ -13,7 +13,7 @@ The kit ships in both kit formats, with the same declarations in each:
 | Format | Descriptor | Published as | Composes onto |
 |---|---|---|---|
 | kit spec v2 | [`spec.yaml`](spec.yaml) | `docker.io/firecrawl/firecrawl-docker-sandbox` | the built-in `sbx` agents (`claude`, `codex`, …), see [section 2](#2-launch-the-sandbox-with-the-kit) |
-| [Kit v3](https://github.com/docker/sandbox-kit-spec) | [`v3/firecrawl.yaml`](v3/firecrawl.yaml) | `docker.io/firecrawl/sbx-kit-firecrawl` | v3 workloads such as `docker/sbx-kit-shell`, see [section 2b](#2b-launch-with-a-kit-v3-workload) |
+| [Kit v3](https://github.com/docker/sandbox-kit-spec) | [`firecrawl/firecrawl.yaml`](firecrawl/firecrawl.yaml) | `docker.io/firecrawl/sbx-kit-firecrawl` | v3 workloads such as `docker/sbx-kit-shell`, see [section 2b](#2b-launch-with-a-kit-v3-workload) |
 
 The two lines cannot be mixed: a v3 mixin only composes onto a v3 workload, and the v2 mixin only onto the
 built-in agents. Pick the row that matches what you run.
@@ -43,7 +43,7 @@ Four observable things, so each is independently verifiable (see [Verify the kit
   `sbx run` fails with `global network policy has not been initialized`.
 
 > Kits are experimental and in Early Access. `sbx` supports both kit spec v2 (this repo's `spec.yaml`) and
-> Kit v3 (`v3/firecrawl.yaml`), and the v3 specification itself is marked experimental until its final
+> Kit v3 (`firecrawl/firecrawl.yaml`), and the v3 specification itself is marked experimental until its final
 > release, targeted for Q4 2026. v3 workloads and mixins cannot be combined with v2 kits, which is why both
 > forms are published.
 
@@ -151,11 +151,11 @@ v3; `sbx/*` is the v2 line). For the Claude Code agent on that shell, add its mi
 sbx run docker/sbx-kit-shell:1.0.0 --kit docker/sbx-kit-claude-mixin:2.1.285 --kit docker.io/firecrawl/sbx-kit-firecrawl:1.0.0 .
 ```
 
-From a local clone, point `--kit` at the `v3/` directory; `sbx` builds source-form kits on demand:
+From a local clone, point `--kit` at the `firecrawl/` directory; `sbx` builds source-form kits on demand:
 
 ```console
 git clone https://github.com/firecrawl/firecrawl-docker-sandbox.git
-sbx run docker/sbx-kit-shell:1.0.0 --kit ./firecrawl-docker-sandbox/v3 .
+sbx run docker/sbx-kit-shell:1.0.0 --kit ./firecrawl-docker-sandbox/firecrawl .
 ```
 
 Two things differ from the v2 form, both by design of the v3 spec:
@@ -181,7 +181,7 @@ independent layer, from a cheap import up to a full end-to-end scrape.
 !python3 -c "import firecrawl, importlib.metadata as m; print('firecrawl-py', m.version('firecrawl-py'), '->', firecrawl.__file__)"
 ```
 
-Expect `firecrawl-py 4.44.0` (the pin from this kit's `spec.yaml` and `v3/firecrawl.yaml`) under
+Expect `firecrawl-py 4.44.0` (the pin from this kit's `spec.yaml` and `firecrawl/firecrawl.yaml`) under
 `/home/agent/.local/lib/.../site-packages/`, the user-site location that matches the kit installing as user
 `1000` rather than as root.
 
@@ -288,7 +288,7 @@ consistency checks that loader leaves to the runtime:
 cd tools/kitcheck && go run . ../..
 ```
 
-`kitcheck` also checks that `v3/firecrawl.yaml` declares the same version, SDK pin, hosts, credential and
+`kitcheck` also checks that `firecrawl/firecrawl.yaml` declares the same version, SDK pin, hosts, credential and
 agent instructions as `spec.yaml`. The v3 descriptor's grammar is validated by the kit frontend while it
 builds, and the image by Docker's conformance suite; with Docker Desktop and
 [`kit-tck`](https://github.com/docker/sandbox-kit-spec/releases):
@@ -303,7 +303,7 @@ If you have the `sbx` CLI, also run the real thing and a smoke test of each form
 ```console
 sbx kit validate .
 sbx run --kit . shell                                 # v2 mixin on a built-in agent
-sbx run docker/sbx-kit-shell:1.0.0 --kit ./v3 .       # v3 mixin on Docker's v3 shell workload
+sbx run docker/sbx-kit-shell:1.0.0 --kit ./firecrawl .       # v3 mixin on Docker's v3 shell workload
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to bump the SDK pin and cut a release.

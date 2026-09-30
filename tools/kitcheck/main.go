@@ -9,7 +9,7 @@
 //   - an api-key credential the agent must read declares proxyManaged
 //   - the pinned firecrawl-py version is identical in spec.yaml and README.md
 //   - spec.yaml `version:` matches the newest CHANGELOG.md heading
-//   - the Kit v3 descriptor (v3/firecrawl.yaml) says the same thing as
+//   - the Kit v3 descriptor (firecrawl/firecrawl.yaml) says the same thing as
 //     spec.yaml: SDK pin, version, hosts, credential, agent instructions
 //
 // The v3 descriptor's own grammar is validated by the kit frontend when it is
@@ -268,26 +268,26 @@ type v3AgentContext struct {
 
 var v3PinRE = regexp.MustCompile(`(?m)^\s*SDK_VERSION="\$\{\{ kit\.args\.sdkVersion \}\}"\s*$`)
 
-// checkV3Descriptor keeps v3/firecrawl.yaml in step with spec.yaml. The two
+// checkV3Descriptor keeps firecrawl/firecrawl.yaml in step with spec.yaml. The two
 // are published side by side (v2 for the built-in agents, v3 for v3
 // workloads), so a change that lands in one and not the other ships two kits
 // that disagree about what they do.
 func checkV3Descriptor(dir string, art *spec.Artifact, r *report) {
-	path := filepath.Join(dir, "v3", "firecrawl.yaml")
+	path := filepath.Join(dir, "firecrawl", "firecrawl.yaml")
 	text := mustRead(path, r)
 	if text == "" {
 		return
 	}
 	var d v3Descriptor
 	if err := yaml.Unmarshal([]byte(text), &d); err != nil {
-		r.fail("v3/firecrawl.yaml does not parse: %v", err)
+		r.fail("firecrawl/firecrawl.yaml does not parse: %v", err)
 		return
 	}
 	if d.SchemaVersion != "3" || d.Kind != "mixin" {
-		r.fail("v3/firecrawl.yaml must declare schemaVersion \"3\" and kind: mixin, got %q / %q", d.SchemaVersion, d.Kind)
+		r.fail("firecrawl/firecrawl.yaml must declare schemaVersion \"3\" and kind: mixin, got %q / %q", d.SchemaVersion, d.Kind)
 	}
 	if d.Version != art.Manifest.Version {
-		r.fail("v3/firecrawl.yaml version %s does not match spec.yaml version %s", d.Version, art.Manifest.Version)
+		r.fail("firecrawl/firecrawl.yaml version %s does not match spec.yaml version %s", d.Version, art.Manifest.Version)
 	}
 
 	// One SDK pin: spec.yaml's SDK_VERSION= line and the v3 arg default.
@@ -296,13 +296,13 @@ func checkV3Descriptor(dir string, art *spec.Artifact, r *report) {
 	sdk, ok := d.Args["sdkVersion"]
 	switch {
 	case !ok || sdk.Default == "":
-		r.fail("v3/firecrawl.yaml must declare args.sdkVersion with a default")
+		r.fail("firecrawl/firecrawl.yaml must declare args.sdkVersion with a default")
 	case len(specPins) == 1 && sdk.Default != specPins[0]:
-		r.fail("v3/firecrawl.yaml args.sdkVersion default %s does not match spec.yaml SDK_VERSION=%s", sdk.Default, specPins[0])
+		r.fail("firecrawl/firecrawl.yaml args.sdkVersion default %s does not match spec.yaml SDK_VERSION=%s", sdk.Default, specPins[0])
 	}
 	wantProvide := "firecrawl-py@${{ kit.args.sdkVersion }}"
 	if len(d.Provides) != 1 || d.Provides[0] != wantProvide {
-		r.fail("v3/firecrawl.yaml must provide exactly %q, got %v", wantProvide, d.Provides)
+		r.fail("firecrawl/firecrawl.yaml must provide exactly %q, got %v", wantProvide, d.Provides)
 	}
 
 	// Capabilities, decoded one by one against the v2 fields they mirror.
@@ -317,7 +317,7 @@ func checkV3Descriptor(dir string, art *spec.Artifact, r *report) {
 	}
 	for _, c := range d.Capabilities {
 		if seen[c.Type] {
-			r.fail("v3/firecrawl.yaml declares %s twice", c.Type)
+			r.fail("firecrawl/firecrawl.yaml declares %s twice", c.Type)
 		}
 		seen[c.Type] = true
 		switch c.Type {
@@ -333,17 +333,17 @@ func checkV3Descriptor(dir string, art *spec.Artifact, r *report) {
 			}
 			for h := range v2Allow {
 				if !v3Allow[h] {
-					r.fail("spec.yaml allows %q but v3/firecrawl.yaml does not list it in any phase", h)
+					r.fail("spec.yaml allows %q but firecrawl/firecrawl.yaml does not list it in any phase", h)
 				}
 			}
 			for h := range v3Allow {
 				if !v2Allow[h] {
-					r.fail("v3/firecrawl.yaml allows %q but spec.yaml does not", h)
+					r.fail("firecrawl/firecrawl.yaml allows %q but spec.yaml does not", h)
 				}
 			}
 			for _, h := range np.Runtime.Allow {
 				if strings.HasPrefix(h, "pypi.") || strings.HasSuffix(h, "pythonhosted.org") {
-					r.fail("v3/firecrawl.yaml grants %q at runtime; PyPI is install-phase only", h)
+					r.fail("firecrawl/firecrawl.yaml grants %q at runtime; PyPI is install-phase only", h)
 				}
 			}
 		case "com.docker.sandbox/credential@1":
@@ -409,13 +409,13 @@ func checkV3Descriptor(dir string, art *spec.Artifact, r *report) {
 				continue
 			}
 			// The loader surfaces v2 agentInstructions.content as AgentContext.
-			rel := filepath.Join("v3", filepath.Clean(ac.ContentFile))
+			rel := filepath.Join("firecrawl", filepath.Clean(ac.ContentFile))
 			body := mustRead(filepath.Join(dir, rel), r)
 			if strings.TrimSpace(body) != strings.TrimSpace(art.AgentContext) {
 				r.fail("%s differs from spec.yaml agentInstructions.content; the agent must read the same text in both kits", rel)
 			}
 		default:
-			r.fail("v3/firecrawl.yaml declares %s, which spec.yaml has no counterpart for", c.Type)
+			r.fail("firecrawl/firecrawl.yaml declares %s, which spec.yaml has no counterpart for", c.Type)
 		}
 	}
 	for _, want := range []string{
@@ -425,10 +425,10 @@ func checkV3Descriptor(dir string, art *spec.Artifact, r *report) {
 		"com.docker.sandbox/agent-context@1",
 	} {
 		if !seen[want] {
-			r.fail("v3/firecrawl.yaml is missing %s", want)
+			r.fail("firecrawl/firecrawl.yaml is missing %s", want)
 		}
 	}
 	if len(r.failures) == 0 {
-		r.note("v3/firecrawl.yaml agrees with spec.yaml (version, SDK pin, hosts, credential, agent instructions)")
+		r.note("firecrawl/firecrawl.yaml agrees with spec.yaml (version, SDK pin, hosts, credential, agent instructions)")
 	}
 }
