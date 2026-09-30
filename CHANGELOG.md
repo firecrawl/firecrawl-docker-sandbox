@@ -1,11 +1,18 @@
 # Changelog
 
-The version here is the kit's `version:` field in `spec.yaml`; `tools/kitcheck` fails if the two disagree.
+The version here is the kit's `version:` field in `spec.yaml` and in `v3/firecrawl.yaml`; `tools/kitcheck`
+fails if any of the three disagree.
 
 ## 1.0.0
 
 First release under `firecrawl/firecrawl-docker-sandbox`, adapted from
 [ajeetraina/sbx-kits-firecrawl](https://github.com/ajeetraina/sbx-kits-firecrawl).
+
+- Ships in both kit formats. `spec.yaml` (kit spec v2) publishes as
+  `docker.io/firecrawl/firecrawl-docker-sandbox` for the built-in `sbx` agents; `v3/firecrawl.yaml`
+  ([Kit v3](https://github.com/docker/sandbox-kit-spec)) publishes as `docker.io/firecrawl/sbx-kit-firecrawl`
+  for v3 workloads such as `docker/sbx-kit-shell`. Same SDK pin, hosts, credential and agent instructions;
+  `tools/kitcheck` asserts they agree, and CI judges the v3 image with Docker's `kit-tck` conformance suite.
 
 - Includes Alexandria (beta) via `firecrawl-py` 4.44.0: `search(..., sources=["alexandria"])`,
   `find_tools()` and `scrape_alexandria()`. All three call `api.firecrawl.dev`, so no extra network

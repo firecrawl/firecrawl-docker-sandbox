@@ -8,6 +8,16 @@ any sandbox agent via the [Firecrawl](https://www.firecrawl.dev/) Python SDK (`f
 Layer it onto whatever agent you run and it can search the web, scrape a page to clean markdown, and crawl a
 site, instead of answering from training-cutoff knowledge.
 
+The kit ships in both kit formats, with the same declarations in each:
+
+| Format | Descriptor | Published as | Composes onto |
+|---|---|---|---|
+| kit spec v2 | [`spec.yaml`](spec.yaml) | `docker.io/firecrawl/firecrawl-docker-sandbox` | the built-in `sbx` agents (`claude`, `codex`, …), see [section 2](#2-launch-the-sandbox-with-the-kit) |
+| [Kit v3](https://github.com/docker/sandbox-kit-spec) | [`v3/firecrawl.yaml`](v3/firecrawl.yaml) | `docker.io/firecrawl/sbx-kit-firecrawl` | v3 workloads such as `docker/sbx-kit-shell`, see [section 2b](#2b-launch-with-a-kit-v3-workload) |
+
+The two lines cannot be mixed: a v3 mixin only composes onto a v3 workload, and the v2 mixin only onto the
+built-in agents. Pick the row that matches what you run.
+
 ## What the kit does
 
 Four observable things, so each is independently verifiable (see [Verify the kit](#3-verify-the-kit)):
@@ -16,24 +26,26 @@ Four observable things, so each is independently verifiable (see [Verify the kit
    the post-install import check fails.
 2. Declares a `firecrawl` credential. The key is swapped into the `Authorization` header by the sbx proxy on
    requests to `api.firecrawl.dev`, and is never baked into the image or written to the sandbox.
-3. Allows egress to `api.firecrawl.dev` (plus PyPI, at install time) via `permissions.network.allow`. Kit
-   network rules add to your sandbox policy; they do not narrow it. Under Docker's default `balanced` policy,
+3. Allows egress to `api.firecrawl.dev` (plus PyPI, at install time) via `permissions.network.allow`
+   (`network-policy@1`, split by phase, in the v3 kit). Kit network rules add to your sandbox policy; they do
+   not narrow it. Under Docker's default `balanced` policy,
    general websites (including most documentation sites) return a proxy 403, so Firecrawl is the agent's
    route to them. Under `deny-all`, `api.firecrawl.dev` is the only web host the agent can reach.
-4. Ships an `agentInstructions` note so the agent knows the capability exists, how to call it, and which
-   sandbox constraints apply to it.
+4. Ships an `agentInstructions` note (`agent-context@1` in the v3 kit) so the agent knows the capability
+   exists, how to call it, and which sandbox constraints apply to it.
 
 ## 0. Prerequisites
 
-- The `sbx` CLI, v0.45 or later. Docker Desktop is not required. On macOS, per
+- The `sbx` CLI, v0.45 or later (v0.46 or later for the v3 kit). Docker Desktop is not required. On macOS, per
   [Docker's install docs](https://docs.docker.com/ai/sandboxes/): `brew install docker/tap/sbx`.
 - Sign in once with `sbx login`.
 - A global network policy, set once with `sbx policy init balanced` (or `deny-all`). Until this runs, every
   `sbx run` fails with `global network policy has not been initialized`.
 
-> Kits are experimental and in Early Access. This kit is on kit spec v2. sbx v0.45 introduced kit spec v3 and
-> keeps supporting v2 for built-in agents, but v3 workloads and mixins cannot be combined with v2 kits. A v3
-> port of this kit is planned.
+> Kits are experimental and in Early Access. `sbx` supports both kit spec v2 (this repo's `spec.yaml`) and
+> Kit v3 (`v3/firecrawl.yaml`), and the v3 specification itself is marked experimental until its final
+> release, targeted for Q4 2026. v3 workloads and mixins cannot be combined with v2 kits, which is why both
+> forms are published.
 
 ## 1. Store the Firecrawl API key
 
@@ -42,11 +54,12 @@ with sbx's secret manager. The key never enters the kit; the proxy injects it at
 `sbx run` has no `-e` flag:
 
 ```console
-echo "$FIRECRAWL_API_KEY" | sbx secret set -g firecrawl   # -g = available to all sandboxes
+echo "$FIRECRAWL_API_KEY" | sbx secret set firecrawl
 ```
 
-Running `sbx secret set -g firecrawl` with no piped value prompts for the key interactively instead. Confirm
-it stored:
+Service secrets are global (available to every sandbox) by default; sbx before v0.46 needed a `-g` flag for
+that. Running `sbx secret set firecrawl` with no piped value prompts for the key interactively instead.
+Confirm it stored:
 
 ```console
 sbx secret ls
@@ -120,6 +133,43 @@ Arguments meant for the agent itself go after a `--` separator, e.g. `sbx run --
 The kit only assumes the base image ships `python3` and `python3-pip`, which every `docker/sandbox-templates`
 image does. On a custom base image without them, the install hook stops with a message saying so.
 
+## 2b. Launch with a Kit v3 workload
+
+[Kit v3](https://github.com/docker/sandbox-kit-spec) kits are ordinary OCI images: the descriptor rides in
+the manifest, so there is no digest dance and a version tag is fine. Compose the v3 mixin onto a v3 workload
+from Docker's `docker` organization, for example the plain shell:
+
+```console
+sbx run docker/sbx-kit-shell:1.0.0 --kit docker.io/firecrawl/sbx-kit-firecrawl:1.0.0 .
+```
+
+Other v3 workloads and agent mixins are listed on
+[Docker Hub](https://hub.docker.com/search?type=sbx_kit&badges=verified_publisher) (the `docker/*` kits are
+v3; `sbx/*` is the v2 line). For the Claude Code agent on that shell, add its mixin alongside ours:
+
+```console
+sbx run docker/sbx-kit-shell:1.0.0 --kit docker/sbx-kit-claude-mixin:2.1.285 --kit docker.io/firecrawl/sbx-kit-firecrawl:1.0.0 .
+```
+
+From a local clone, point `--kit` at the `v3/` directory; `sbx` builds source-form kits on demand:
+
+```console
+git clone https://github.com/firecrawl/firecrawl-docker-sandbox.git
+sbx run docker/sbx-kit-shell:1.0.0 --kit ./firecrawl-docker-sandbox/v3 .
+```
+
+Two things differ from the v2 form, both by design of the v3 spec:
+
+- The `firecrawl` credential is required, and v3 enforces that at resolution: with no secret stored, the
+  create is refused instead of creating a sandbox with the credential withheld. Store the key first
+  ([section 1](#1-store-the-firecrawl-api-key)).
+- The kit is self-describing inside the sandbox. `cat /usr/share/sandbox/kit/firecrawl/kit.yaml` prints the
+  published descriptor, and the agent instructions live at
+  `/usr/share/sandbox/kit/firecrawl/firecrawl-context.md`, indexed from the workload's `AGENTS.md`.
+
+Everything in [section 3](#3-verify-the-kit) applies unchanged: same install hook, same proxy-managed
+`FIRECRAWL_API_KEY`, same egress.
+
 ## 3. Verify the kit
 
 Inside the sandbox session, `!` shell escapes prove the mixin is really there. Each check covers an
@@ -131,7 +181,7 @@ independent layer, from a cheap import up to a full end-to-end scrape.
 !python3 -c "import firecrawl, importlib.metadata as m; print('firecrawl-py', m.version('firecrawl-py'), '->', firecrawl.__file__)"
 ```
 
-Expect `firecrawl-py 4.44.0` (the pin from this kit's `spec.yaml`) under
+Expect `firecrawl-py 4.44.0` (the pin from this kit's `spec.yaml` and `v3/firecrawl.yaml`) under
 `/home/agent/.local/lib/.../site-packages/`, the user-site location that matches the kit installing as user
 `1000` rather than as root.
 
@@ -238,11 +288,22 @@ consistency checks that loader leaves to the runtime:
 cd tools/kitcheck && go run . ../..
 ```
 
-If you have the `sbx` CLI (v0.45 or later), also run the real thing and a smoke test:
+`kitcheck` also checks that `v3/firecrawl.yaml` declares the same version, SDK pin, hosts, credential and
+agent instructions as `spec.yaml`. The v3 descriptor's grammar is validated by the kit frontend while it
+builds, and the image by Docker's conformance suite; with Docker Desktop and
+[`kit-tck`](https://github.com/docker/sandbox-kit-spec/releases):
+
+```console
+PUSH=0 ./scripts/push-kit-v3.sh
+kit-tck validate --layout /tmp/sbx-kit-firecrawl-layout 1.0.0
+```
+
+If you have the `sbx` CLI, also run the real thing and a smoke test of each form:
 
 ```console
 sbx kit validate .
-sbx run --kit . shell
+sbx run --kit . shell                                 # v2 mixin on a built-in agent
+sbx run docker/sbx-kit-shell:1.0.0 --kit ./v3 .       # v3 mixin on Docker's v3 shell workload
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to bump the SDK pin and cut a release.
