@@ -1,0 +1,135 @@
+# syntax=docker/sandbox-kit:3
+# yaml-language-server: $schema=https://raw.githubusercontent.com/docker/sandbox-kit-spec/main/schema/kit.schema.json
+#
+# The Firecrawl kit as a Kit v3 mixin: the same declarations as ../spec.yaml
+# (kit spec v2), expressed as typed capabilities. Both stay published, because
+# a v3 mixin only composes onto v3 workloads and the v2 mixin only onto v2
+# agents. The two descriptors must keep saying the same thing; kitcheck
+# asserts the pieces that can be compared mechanically (SDK pin, hosts,
+# service name, agent instructions).
+#
+# The mixin carries no content layer of its own (no companion dockerfile), so
+# the published image is declaration-only: one layer holding this descriptor
+# and the staged context file. The SDK still arrives through an install hook;
+# see the MIGRATION NOTE on lifecycle@1 for why that hook was kept.
+schemaVersion: "3"
+kind: mixin
+displayName: Firecrawl (live web access)
+author: "Firecrawl <hello@firecrawl.dev>"
+description: >-
+  Adds live web search, scrape and crawl to any sandboxed agent via the
+  firecrawl-py SDK, wired to Firecrawl's cloud API through the sandbox proxy.
+  Needs a key: sbx secret set firecrawl (the kit holds no key). Layer it onto
+  a shell or agent workload; the SDK is then importable from python3.
+sourceUrl: https://github.com/firecrawl/firecrawl-docker-sandbox
+iconUrl: https://raw.githubusercontent.com/firecrawl/firecrawl-docker-sandbox/main/docs/firecrawl-sbx-kit.png
+version: "1.0.0"
+licenses: [Apache-2.0]
+
+args:
+  sdkVersion:
+    default: "4.44.0"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: >-
+      firecrawl-py release to install. Bump the default together with the
+      pin in ../spec.yaml and README.md (kitcheck asserts they agree).
+    # Build-phase: the value is expanded into the published descriptor (the
+    # install hook and the provides entry below) when the kit is built, so a
+    # published digest pins one SDK release. A provides entry cannot carry a
+    # create-time reference, so this is not a `--kit-arg`; rebuild to bump.
+    # There is no companion dockerfile, so the build arg itself goes unused.
+    buildArg: SDK_VERSION
+
+# What this kit adds, at the version the hook installs.
+provides: ["firecrawl-py@${{ kit.args.sdkVersion }}"]
+
+# No requires. The hook needs python3 with pip on the composed base, which
+# every Docker sandbox template ships; a base without them fails the create
+# with a message saying so rather than refusing at resolution. Stating
+# `deb/python3` here would refuse workloads whose Python came from a
+# tarball or a Nix closure, which is how several agent templates ship it.
+
+capabilities:
+  # v2 had one flat allow list; v3 splits it by phase. PyPI is reached only
+  # by the install hook, the API only by the agent. Entries stay portless so
+  # the inject domain below matches an allow entry verbatim.
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      install:
+        allow:
+          - pypi.org
+          - files.pythonhosted.org
+      runtime:
+        allow:
+          - api.firecrawl.dev
+
+  # Required, as in v2 (no `optional: true`): without a binding the sandbox
+  # should refuse to create instead of letting the agent discover it as a
+  # 401 mid-task. v3 enforces that at resolution; v2 only warned.
+  - type: com.docker.sandbox/credential@1
+    description: "Firecrawl API key (fc-...) from https://www.firecrawl.dev/app/api-keys"
+    config:
+      service: firecrawl
+      phase: runtime
+      apiKey:
+        name: FIRECRAWL_API_KEY
+        # The container sees the "proxy-managed" sentinel in
+        # FIRECRAWL_API_KEY and the proxy swaps in the real key on the way
+        # out, so the key never lands in the image or the sandbox.
+        proxyManaged: true
+        inject:
+          - {domain: api.firecrawl.dev, header: Authorization, format: "Bearer %s"}
+
+  # MIGRATION NOTE: the v2 install hook stays a hook rather than becoming an
+  # overlay layer. The migration guide moves language-package installs into
+  # the recipe, but firecrawl-py depends on pydantic-core, a compiled
+  # extension, so a baked user-site is tied to one CPython minor version
+  # while this mixin composes onto whichever base the workload brings.
+  # Installing at create against the base's own interpreter is what makes
+  # the kit portable; the price is the install-phase PyPI grant above and
+  # a few seconds per sandbox create. Revisit if the templates converge on
+  # one Python or once uv-managed interpreters are cheap enough to ship.
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - description: "Install the Firecrawl Python SDK (firecrawl-py) as the agent user"
+          user: "1000"
+          # Hook environments are deny-by-default. pip fetches through the
+          # sandbox's forced proxy, so it must be handed the proxy variables
+          # the runtime sets; nothing else from the environment is read.
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY, http_proxy, https_proxy, no_proxy]
+          command: |
+            set -eu
+            SDK_VERSION="${{ kit.args.sdkVersion }}"
+
+            command -v python3 >/dev/null 2>&1 || {
+              echo "firecrawl kit: python3 not found. Every Docker sandbox template ships python3 and python3-pip; on a custom base image, install them before layering this kit." >&2
+              exit 1
+            }
+            python3 -m pip --version >/dev/null 2>&1 || {
+              echo "firecrawl kit: python3 is present but has no pip module. Install python3-pip on the base image." >&2
+              exit 1
+            }
+
+            # Debian and Ubuntu mark the system Python externally managed
+            # (PEP 668), so a --user install needs --break-system-packages
+            # there. Retry without it for images whose pip predates 23.0 and
+            # rejects the flag. pip verifies the wheel against PyPI's hashes,
+            # so pinning the version pins the content.
+            install_sdk() {
+              python3 -m pip install --user --no-cache-dir --disable-pip-version-check "$@" "firecrawl-py==${SDK_VERSION}"
+            }
+            install_sdk --break-system-packages || install_sdk
+
+            python3 -c "
+            import firecrawl, importlib.metadata as m
+            got = m.version('firecrawl-py')
+            assert got == '${SDK_VERSION}', 'expected ${SDK_VERSION}, got ' + got
+            print('firecrawl-py', got, 'installed at', firecrawl.__file__)
+            "
+
+  # The v2 agentInstructions body, verbatim, as a staged context file. A
+  # mixin contributes content only; the workload owns the profile filename.
+  - type: com.docker.sandbox/agent-context@1
+    config:
+      contentFile: ./firecrawl-context.md

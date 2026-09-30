@@ -38,3 +38,30 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: shellcheck scripts/*.sh
+
+  # The v3 descriptor is validated by the kit frontend while it builds, and the
+  # resulting image is judged by Docker's conformance suite (kit-tck). Neither
+  # needs sbx or a registry: the build exports an OCI layout directory.
+  kit-v3:
+    runs-on: ubuntu-latest
+    env:
+      KIT_TCK_VERSION: 3.0.0-m.7
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the v3 kit into an OCI layout
+        run: PUSH=0 LAYOUT_DIR="$RUNNER_TEMP/kit-layout" bash ./scripts/push-kit-v3.sh
+
+      - name: Install kit-tck
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/kit-tck.tgz" \
+            "https://github.com/docker/sandbox-kit-spec/releases/download/v${KIT_TCK_VERSION}/kit-tck_${KIT_TCK_VERSION}_linux_amd64.tar.gz"
+          tar -xzf "$RUNNER_TEMP/kit-tck.tgz" -C "$RUNNER_TEMP" kit-tck
+          "$RUNNER_TEMP/kit-tck" version
+
+      - name: Run the kit conformance suite
+        run: |
+          version="$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([0-9][^"]*\)"\{0,1\}[[:space:]]*$/\1/p' firecrawl/firecrawl.yaml)"
+          "$RUNNER_TEMP/kit-tck" validate --layout "$RUNNER_TEMP/kit-layout" "$version" -v
